@@ -6,12 +6,14 @@ use App\Filament\Resources\JadwalResource\Pages;
 use App\Filament\Resources\JadwalResource\RelationManagers;
 use App\Models\Jadwal;
 use Filament\Forms;
+use Filament\Forms\Components\Component;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -28,25 +30,6 @@ class JadwalResource extends Resource
     {
         return $form
             ->schema([
-                Section::make('Akademik')
-                    ->schema([
-                        Select::make('kelas_id')
-                            ->label('Kelas')
-                            ->relationship('kelas', 'nama_kelas')
-                            ->required(),
-
-                        Select::make('guru_id')
-                            ->label('Guru')
-                            ->relationship('guru', 'nama_lengkap')
-                            ->required(),
-
-                        Select::make('mata_pelajaran_id')
-                            ->label('Mata Pelajaran')
-                            ->relationship('mataPelajaran', 'nama')
-                            ->required(),
-                    ])
-                    ->columns(2),
-
                 Section::make('Waktu')
                     ->schema([
                         Select::make('hari')
@@ -64,23 +47,91 @@ class JadwalResource extends Resource
                         Section::make([
                             Select::make('jam_mulai')
                                 ->label('Jam Mulai')
-                                ->options(
-                                    self::generateJamList()
-                                )
+                                ->options(self::generateJamList())
                                 ->required(),
 
                             Select::make('jam_selesai')
                                 ->label('Jam Selesai')
-                                ->options(
-                                    self::generateJamList()
-                                )
+                                ->options(self::generateJamList())
                                 ->required(),
                         ])->columns(2)
                     ]),
 
+                Section::make('Akademik')
+                    ->schema([
+                        Select::make('kelas_id')
+                            ->label('Kelas')
+                            ->relationship('kelas', 'nama_kelas')
+                            ->required()
+                            ->rules([
+                                function (Get $get, Component $component) {
+                                    return function (string $attribute, $value, \Closure $fail) use ($get, $component) {
+                                        $hari = $get('hari');
+                                        $jamMulai = $get('jam_mulai');
+                                        $jamSelesai = $get('jam_selesai');
+                                        $recordId = $component->getLivewire()->record?->id;
+
+                                        $exists = \App\Models\Jadwal::where('kelas_id', $value)
+                                            ->where('hari', $hari)
+                                            ->when($recordId, fn($q) => $q->where('id', '!=', $recordId))
+                                            ->where(function ($query) use ($jamMulai, $jamSelesai) {
+                                                $query->whereBetween('jam_mulai', [$jamMulai, $jamSelesai])
+                                                    ->orWhereBetween('jam_selesai', [$jamMulai, $jamSelesai])
+                                                    ->orWhere(function ($q) use ($jamMulai, $jamSelesai) {
+                                                        $q->where('jam_mulai', '<', $jamMulai)
+                                                            ->where('jam_selesai', '>', $jamSelesai);
+                                                    });
+                                            })
+                                            ->exists();
+
+                                        if ($exists) {
+                                            $fail("Kelas ini sudah memiliki jadwal lain di waktu tersebut.");
+                                        }
+                                    };
+                                }
+                            ]),
+
+                        Select::make('guru_id')
+                            ->label('Guru')
+                            ->relationship('guru', 'nama_lengkap')
+                            ->required()
+                            ->rules([
+                                function (Get $get, Component $component) {
+                                    return function (string $attribute, $value, \Closure $fail) use ($get, $component) {
+                                        $hari = $get('hari');
+                                        $jamMulai = $get('jam_mulai');
+                                        $jamSelesai = $get('jam_selesai');
+                                        $recordId = $component->getLivewire()->record?->id;
+
+                                        $exists = \App\Models\Jadwal::where('guru_id', $value)
+                                            ->where('hari', $hari)
+                                            ->when($recordId, fn($q) => $q->where('id', '!=', $recordId))
+                                            ->where(function ($query) use ($jamMulai, $jamSelesai) {
+                                                $query->whereBetween('jam_mulai', [$jamMulai, $jamSelesai])
+                                                    ->orWhereBetween('jam_selesai', [$jamMulai, $jamSelesai])
+                                                    ->orWhere(function ($q) use ($jamMulai, $jamSelesai) {
+                                                        $q->where('jam_mulai', '<', $jamMulai)
+                                                            ->where('jam_selesai', '>', $jamSelesai);
+                                                    });
+                                            })
+                                            ->exists();
+
+                                        if ($exists) {
+                                            $fail("Guru ini sudah mengajar di waktu tersebut.");
+                                        }
+                                    };
+                                }
+                            ]),
+
+                        Select::make('mata_pelajaran_id')
+                            ->label('Mata Pelajaran')
+                            ->relationship('mataPelajaran', 'nama')
+                            ->required(),
+                    ])
+                    ->columns(2),
+
                 Section::make('Lain-lain')
                     ->schema([
-
                         TextInput::make('ruangan')
                             ->label('Ruangan')
                             ->maxLength(50),
@@ -88,7 +139,8 @@ class JadwalResource extends Resource
                         Textarea::make('keterangan')
                             ->label('Keterangan')
                             ->rows(2),
-                    ])->columns(2)
+                    ])
+                    ->columns(2)
             ]);
     }
 
