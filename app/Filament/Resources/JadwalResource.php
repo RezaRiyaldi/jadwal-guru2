@@ -3,22 +3,18 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\JadwalResource\Pages;
-use App\Filament\Resources\JadwalResource\RelationManagers;
 use App\Models\Jadwal;
-use Filament\Forms;
 use Filament\Forms\Components\Component;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class JadwalResource extends Resource
 {
@@ -75,9 +71,7 @@ class JadwalResource extends Resource
                                             ->where('hari', $hari)
                                             ->when($recordId, fn($q) => $q->where('id', '!=', $recordId))
                                             ->where(function ($query) use ($jamMulai, $jamSelesai) {
-                                                $query->whereBetween('jam_mulai', [$jamMulai, $jamSelesai])
-                                                    ->orWhereBetween('jam_selesai', [$jamMulai, $jamSelesai])
-                                                    ->orWhere(function ($q) use ($jamMulai, $jamSelesai) {
+                                                $query->where(function ($q) use ($jamMulai, $jamSelesai) {
                                                         $q->where('jam_mulai', '<', $jamMulai)
                                                             ->where('jam_selesai', '>', $jamSelesai);
                                                     });
@@ -94,6 +88,11 @@ class JadwalResource extends Resource
                         Select::make('guru_id')
                             ->label('Guru')
                             ->relationship('guru', 'nama_lengkap')
+                            ->options(function () {
+                                return \App\Models\Guru::where('status', 'aktif')
+                                    ->pluck('nama_lengkap', 'id');
+                            })
+                            ->getOptionLabelFromRecordUsing(fn ($record) => $record->nama_lengkap)
                             ->required()
                             ->rules([
                                 function (Get $get, Component $component) {
@@ -107,9 +106,7 @@ class JadwalResource extends Resource
                                             ->where('hari', $hari)
                                             ->when($recordId, fn($q) => $q->where('id', '!=', $recordId))
                                             ->where(function ($query) use ($jamMulai, $jamSelesai) {
-                                                $query->whereBetween('jam_mulai', [$jamMulai, $jamSelesai])
-                                                    ->orWhereBetween('jam_selesai', [$jamMulai, $jamSelesai])
-                                                    ->orWhere(function ($q) use ($jamMulai, $jamSelesai) {
+                                                $query->where(function ($q) use ($jamMulai, $jamSelesai) {
                                                         $q->where('jam_mulai', '<', $jamMulai)
                                                             ->where('jam_selesai', '>', $jamSelesai);
                                                     });
@@ -157,7 +154,7 @@ class JadwalResource extends Resource
                 } else if (auth()->user()->role === 'murid') {
                     $kelasId = auth()->user()?->murid?->kelas_id;
 
-                    $query->where('id', '=', $kelasId);
+                    $query->where('kelas_id', '=', $kelasId);
                 }
 
                 return $query;
@@ -216,5 +213,20 @@ class JadwalResource extends Resource
         }
 
         return $list;
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Jadwal';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Jadwal';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Jadwal';
     }
 }

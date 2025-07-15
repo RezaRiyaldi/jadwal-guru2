@@ -5,8 +5,10 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\MuridResource\Pages;
 use App\Filament\Resources\MuridResource\RelationManagers;
 use App\Models\Murid;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Components\BelongsToSelect;
+use Filament\Forms\Components\Component;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
@@ -14,6 +16,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Pages\Page;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -43,12 +46,33 @@ class MuridResource extends Resource
                             ->email()
                             ->required()
                             ->maxLength(255)
-                            ->afterStateHydrated(function (TextInput $component, $state, $record) {
-                                $component->state($record?->user?->email);
-                            })
-                            ->afterStateUpdated(function ($state, $livewire) {
-                                $livewire->emailForUser = $state;
-                            }),
+                            ->afterStateHydrated(
+                                function (TextInput $component, $state, $record) {
+                                    $component->state($record?->user?->email);
+                                }
+                            )
+                            ->afterStateUpdated(
+                                function ($state, $livewire) {
+                                    $livewire->emailForUser = $state;
+                                }
+                            )
+                            ->rules([
+                                function (Get $get, Component $component) {
+                                    return function (string $attribute, $value, \Closure $fail) use ($get, $component) {
+                                        $email = $get('email');
+                                        $recordId = $component->getLivewire()->record?->id;
+
+                                        $exists = Murid::join('users', 'users.id', '=', 'murids.user_id')
+                                            ->where('users.email', $email)
+                                            ->when($recordId, fn($q) => $q->where('murids.id', '!=', $recordId))
+                                            ->exists();
+
+                                        if ($exists) {
+                                            $fail('Email sudah terdaftar');
+                                        }
+                                    };
+                                }
+                            ]),
 
                         TextInput::make('no_hp')
                             ->label('No. HP')
@@ -127,6 +151,9 @@ class MuridResource extends Resource
                         'pindah' => 'warning',
                         'meninggal' => 'danger',
                         default => 'secondary',
+                    })
+                    ->formatStateUsing(fn($state) => match ($state) {
+                        default => ucfirst($state), // fallback aman
                     }),
             ])
             ->filters([
@@ -144,7 +171,8 @@ class MuridResource extends Resource
                     addActions(['tu', 'superadmin'], Tables\Actions\EditAction::make()),
                 )
             )
-            ->bulkActions([]
+            ->bulkActions(
+                []
                 // array_merge(
                 //     addActions(
                 //         ['tu', 'superadmin'],
@@ -171,4 +199,20 @@ class MuridResource extends Resource
             'edit' => Pages\EditMurid::route('/{record}/edit'),
         ];
     }
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Murid';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Murid';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Murid';
+    }
 }
+

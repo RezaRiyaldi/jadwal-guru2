@@ -17,7 +17,19 @@ class Dashboard extends Page
 
     public function mount(): void
     {
-        $jadwals = Jadwal::with(['kelas', 'guru', 'mataPelajaran'])->get();
+        $jadwals = Jadwal::with(['kelas', 'guru', 'mataPelajaran']);
+
+        if (auth()->user()->role == 'guru') {
+            $guruId = auth()->user()?->guru?->id;
+
+            $jadwals = $jadwals->where('jadwals.guru_id', $guruId);
+        } else if (auth()->user()->role == 'murid') {
+            $kelasId = auth()->user()?->murid?->kelas?->id;
+
+            $jadwals = $jadwals->where('kelas_id', $kelasId);
+        }
+
+        $jadwals = $jadwals->get();
 
         $events = collect();
 
@@ -43,10 +55,10 @@ class Dashboard extends Page
                 $startDate = now()->startOfWeek()->addWeeks($i)->modify("next $englishDay");
 
                 $events->push([
-                    'title' => $jadwal->mataPelajaran->nama 
-                    . ' - ' . $jadwal->kelas->nama_kelas
-                    . ' (' . \Carbon\Carbon::parse($jadwal->jam_mulai)->format('H:i') 
-                    . ' - ' . \Carbon\Carbon::parse($jadwal->jam_selesai)->format('H:i') . ')',
+                    'title' => $jadwal->mataPelajaran->nama
+                        . ' - ' . $jadwal->kelas->nama_kelas
+                        . ' (' . \Carbon\Carbon::parse($jadwal->jam_mulai)->format('H:i')
+                        . ' - ' . \Carbon\Carbon::parse($jadwal->jam_selesai)->format('H:i') . ')',
 
                     'start' => $startDate->toDateString(),
                     'allDay' => true,

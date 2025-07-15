@@ -6,10 +6,12 @@ use App\Filament\Resources\UserResource\Pages;
 use App\Filament\Resources\UserResource\RelationManagers;
 use App\Models\User;
 use Filament\Forms;
+use Filament\Forms\Components\Component;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -31,7 +33,25 @@ class UserResource extends Resource
             Section::make('Data User')
                 ->schema([
                     TextInput::make('name')->required(),
-                    TextInput::make('email')->email()->required(),
+                    TextInput::make('email')
+                        ->email()
+                        ->required()
+                        ->rules([
+                            function (Get $get, Component $component) {
+                                return function (string $attribute, $value, \Closure $fail) use ($get, $component) {
+                                    $email = $get('email');
+                                    $recordId = $component->getLivewire()->record?->id;
+
+                                    $exists = User::where('email', $email)
+                                        ->when($recordId, fn($q) => $q->where('id', '!=', $recordId))
+                                        ->exists();
+
+                                    if ($exists) {
+                                        $fail('Email sudah terdaftar');
+                                    }
+                                };
+                            }
+                        ]),
                     TextInput::make('password')
                         ->label('Password')
                         ->password()

@@ -37,6 +37,7 @@ class ViewKelasCustom extends ViewRecord implements HasTable
         return $table
             ->query(
                 Murid::query()->where('kelas_id', $this->record->id)
+                    ->where('status', 'aktif')
             )
             ->columns([
                 Tables\Columns\TextColumn::make('nis'),

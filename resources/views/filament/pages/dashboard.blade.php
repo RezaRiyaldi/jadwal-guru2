@@ -22,29 +22,36 @@
         </div>
     </div>
 
-    <div class="mt-8 bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
-        <div id="calendar" class="w-full"></div>
+    <div class="mt-8 bg-white dark:bg-gray-800 p-4 rounded-xl shadow overflow-x-auto">
+        <div id="calendar" class="w-full max-w-full"></div>
     </div>
 
     @push('scripts')
-        <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
-        <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                const calendarEl = document.getElementById('calendar');
-                const calendar = new FullCalendar.Calendar(calendarEl, {
-                    initialView: 'dayGridMonth',
-                    events: @json($events),
-                    locale: 'id',
-                    height: 600,
-                    headerToolbar: {
-                        left: 'prev,next today',
-                        center: 'title',
-                        right: 'dayGridMonth,listWeek'
-                    }
-                });
-                calendar.render();
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const calendarEl = document.getElementById('calendar');
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                events: @json($events),
+                locale: 'id',
+                // height: 'auto',
+                // contentHeight: 'auto',
+                expandRows: true,
+                hiddenDays: [0],
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,listWeek'
+                }
             });
-        </script>
+            calendar.render();
+
+            setTimeout(() => {
+                calendar.updateSize();
+            }, 100);
+        });
+    </script>
     @endpush
 </x-filament::page>

@@ -23,11 +23,13 @@ class CreateMurid extends CreateRecord
         $data['name'] = str_replace(' ', '_', strtolower($data['nama_lengkap']));
 
         // Ambil tahun dan bulan dari tanggal_masuk
-        $tanggalMasuk = Carbon::parse($data['tanggal_masuk']);
-        $prefix = $tanggalMasuk->format('ym'); // YYMM
+        // $tanggalMasuk = date('ym');
+        $jenisKelamin = $data['jenis_kelamin'] == 'L' ? 1 : 2;
+        $prefix = date('ym') . $jenisKelamin; // YYMM
+        
 
         // Hitung jumlah murid yang memiliki prefix yg sama
-        $count = Murid::whereRaw("LEFT(nis, 4) = ?", [$prefix])->count() + 1;
+        $count = Murid::count() + 1;
         $urut = str_pad($count, 4, '0', STR_PAD_LEFT);
 
         $data['nis'] = $prefix . $urut;
@@ -45,5 +47,10 @@ class CreateMurid extends CreateRecord
         unset($data['name'], $data['email'], $data['password']);
 
         return $data;
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
     }
 }

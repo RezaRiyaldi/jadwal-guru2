@@ -96,4 +96,19 @@ class MataPelajaranResource extends Resource
             'edit' => Pages\EditMataPelajaran::route('/{record}/edit'),
         ];
     }
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Mata Pelajaran';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Mata Pelajaran';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Mata Pelajaran';
+    }
 }

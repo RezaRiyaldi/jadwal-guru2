@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\GuruResource\Pages;
 use App\Models\Guru;
 use Filament\Forms;
+use Filament\Forms\Components\Component;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
@@ -12,6 +13,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\Resource;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -36,7 +38,24 @@ class GuruResource extends Resource
                         })
                         ->afterStateUpdated(function ($state, $livewire) {
                             $livewire->emailForUser = $state;
-                        }),
+                        })
+                        ->rules([
+                            function (Get $get, Component $component) {
+                                return function (string $attribute, $value, \Closure $fail) use ($get, $component) {
+                                    $email = $get('email');
+                                    $recordId = $component->getLivewire()->record?->id;
+
+                                    $exists = Guru::join('users', 'users.id', '=', 'gurus.user_id')
+                                        ->where('users.email', $email)
+                                        ->when($recordId, fn($q) => $q->where('gurus.id', '!=', $recordId))
+                                        ->exists();
+
+                                    if ($exists) {
+                                        $fail('Email sudah terdaftar');
+                                    }
+                                };
+                            }
+                        ]),
                     TextInput::make('nip')->label('NIP')->nullable(),
                     TextInput::make('no_hp')->label('No HP')->nullable(),
                 ])->columns(2),
@@ -59,7 +78,7 @@ class GuruResource extends Resource
                 ->schema([
                     Radio::make('status')->options([
                         'aktif' => 'Aktif',
-                        'tidak aktif' => 'Tidak Aktif',
+                        'tidak_aktif' => 'Tidak Aktif',
                     ])->default('aktif')
                 ])->hidden(fn($livewire) => $livewire instanceof Pages\CreateGuru),
 
@@ -72,7 +91,18 @@ class GuruResource extends Resource
             Tables\Columns\TextColumn::make('nip')->label('NIP'),
             Tables\Columns\TextColumn::make('nama_lengkap'),
             Tables\Columns\TextColumn::make('jenis_kelamin'),
-            Tables\Columns\TextColumn::make('status')->badge(),
+            Tables\Columns\TextColumn::make('status')
+                ->badge()
+                ->color(fn($state) => match ($state) {
+                    'aktif' => 'success',
+                    'tidak_aktif' => 'danger',
+                    default => 'gray',
+                })
+                ->formatStateUsing(fn($state) => match ($state) {
+                    'aktif' => 'Aktif',
+                    'tidak_aktif' => 'Tidak Aktif',
+                    default => ucfirst($state), // fallback aman
+                }),
         ])
             ->actions(
                 array_merge(
@@ -91,5 +121,20 @@ class GuruResource extends Resource
             'create' => Pages\CreateGuru::route('/create'),
             'edit' => Pages\EditGuru::route('/{record}/edit'),
         ];
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Guru';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Guru';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Guru';
     }
 }
